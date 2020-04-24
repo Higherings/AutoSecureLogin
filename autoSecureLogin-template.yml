@@ -1,0 +1,253 @@
+# igarcia 2020-04
+# Version 0.1
+# Automation to Secure Bastion Host (Administration Instance Linux/Windows)
+# Gets updates from GuardDuty (must be already configured) and blocks the CIDR /24 of attackers
+# This Template creates Lambda triggered by GuardDuty Findings and another Lambda scheduled for cleanup 
+# Resources to create: Lambda, CloudWatch Event, IAM Role, DynamoDB Table
+# The AWS Account should be already using GuardDuty
+# IMPORTANT: The block will occur on ports 3389 (Windows) or 22 (Linux) on the specified NACL
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template to automate security changes on NACL for Bastion Host
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Stack Environment"
+        Parameters:
+          - TemplateAmbiente
+      -
+        Label:
+          default: "AutoSecureLogin Setup"
+        Parameters:
+          - pNACL
+          - pNumberRules
+          - pDaysBlock
+    ParameterLabels: #Define Friendly Names
+      TemplateAmbiente:
+        default: "Value for CloudFormation Resources Env Tag"
+      pDaysBlock:
+        default: "Days blocked"
+      pNumberRules:
+        default: "Max Number of IPs blocked"
+      pNACL:
+        default: "ID of the NACL to use"
+
+Parameters: #Default Parameters Values
+  TemplateAmbiente:
+    Type: String
+    Description: "Tag Env to set on CloudFormation resources"
+    Default: Test
+    MaxLength: 10
+    MinLength: 2
+    ConstraintDescription: "Set a simple Tag between 2 and 10 characters long"
+  pDaysBlock:
+    Type: Number
+    Description: "How many days should remain the DENY rule for offending IPs in the NACL"
+    Default: 30
+    MinValue: 7
+    MaxValue: 365
+    ConstraintDescription: "Please set a number between 7 and 365"
+  pNumberRules:
+    Type: Number
+    Description: "Max number of IPs to keep record, will use CIDR/24 of offending IPs"
+    Default: 15
+    MinValue: 1
+    MaxValue: 6400
+    ConstraintDescription: "Please set a number between 1 and 6400"
+  pNACL:
+    Type: String
+    Description: "ID of the Network Access Control List (NACL) protecting your Bastion Host Subnet"
+    MaxLength: 21
+    MinLength: 12
+    ConstraintDescription: "Please set a valid NACL Id"
+
+Resources:
+  TemplateRole: #Role for Lambda
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Description: Role to execute autoSecureLogin
+      Policies: 
+        -
+          PolicyName: !Join [ "-", [ "PolicyLambdaExec", !Ref TemplateAmbiente ] ]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+        -
+          PolicyName: !Join [ "-", [ "PolicyLambdaNACL", !Ref TemplateAmbiente ] ]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "ec2:ReplaceNetworkAclEntry"
+                  - "ec2:CreateNetworkAcl"
+                  - "ec2:DescribeNetworkAcls"
+                  - "ec2:CreateNetworkAclEntry"
+                  - "ec2:DeleteNetworkAcl"
+                  - "ec2:DeleteNetworkAclEntry"
+                Resource: "*"
+        -
+          PolicyName: !Join [ "-", [ "PolicyLambdaDynamoDB", !Ref TemplateAmbiente ] ]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "dynamodb:BatchWriteItem"
+                  - "dynamodb:PutItem"
+                  - "dynamodb:DescribeTable"
+                  - "dynamodb:DeleteItem"
+                  - "dynamodb:GetItem"
+                  - "dynamodb:Scan"
+                  - "dynamodb:Query"
+                  - "dynamodb:UpdateItem"
+                  - "dynamodb:UpdateTable"
+                Resource: !Join [ "" , [ "arn:aws:dynamodb:*:*:table/", !Join [ "-", [ "AutoSecureLoginTable", !Ref TemplateAmbiente ] ] ] ]
+      RoleName: !Join [ "-", [ "RoleforAutoSecureLogin", !Ref TemplateAmbiente ] ]
+      Tags:
+        - Key: Env
+          Value: !Ref TemplateAmbiente
+ 
+  TemplateDynamoDBtable:  #Tabla para almacenar reglas de NACL
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: pk
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        -
+          AttributeName: pk
+          KeyType: HASH
+      TableName: !Join [ "-", [ "AutoSecureLoginTable", !Ref TemplateAmbiente ] ]
+      Tags:
+        -
+          Key: Env
+          Value: !Ref TemplateAmbiente
+
+  TemplateLambdaCleaner:  #Lambda to Clean Up NACL
+    Type: AWS::Lambda::Function
+    DependsOn: TemplateRole
+    Properties:
+      Code:
+        S3Bucket: higher-artifacts
+        S3Key: "autosecurelogin-cleaner.zip"
+      Description: Clean up NACL rules after the block period
+      Environment:
+        Variables:
+          BLOCKDAYS: !Ref pDaysBlock
+          NACLID: !Ref pNACL
+          DDBTABLE: !Join [ "-", [ "AutoSecureLoginTable", !Ref TemplateAmbiente ] ]
+      FunctionName: !Join [ "-", [ "AutoSecureLoginLambda-cleaner", !Ref TemplateAmbiente ] ]
+      Role: !GetAtt TemplateRole.Arn
+      Timeout: 800
+      Handler: autosecurelogin-cleaner.lambda_handler
+      Runtime: python3.8
+      MemorySize: 256
+      Tags:
+        -
+          Key: Env
+          Value: !Ref TemplateAmbiente
+
+  TemplateEventLambdaCleaner:  #Event to invoke Lambda Cleaner
+    Type: AWS::Events::Rule
+    DependsOn: TemplateLambdaCleaner
+    Properties:
+      Description: Invoke Lambda for AutoSecureLogin Clean Up
+      Name: !Join [ "-", [ "AutoSecureLogin-cleanerEvent", !Ref TemplateAmbiente ] ]
+      ScheduleExpression: "rate(1 day)"
+      State: ENABLED
+      Targets:
+        -
+          Arn: !GetAtt TemplateLambdaCleaner.Arn
+          Id: !Join [ "-", [!Ref TemplateAmbiente, "AutoSecureLoginLambda-cleaner" ] ]
+
+  TemplatePermisoEventLambdaCleaner: #Relaciona permisos del Event con Lambda Cleaner
+    Type: AWS::Lambda::Permission
+    DependsOn: TemplateEventLambdaCleaner
+    Properties:
+      FunctionName: !GetAtt TemplateLambdaCleaner.Arn
+      Action: "lambda:InvokeFunction"
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt TemplateEventLambdaCleaner.Arn
+
+  TemplateLambda:  #Lambda to Modify NACL
+    Type: AWS::Lambda::Function
+    DependsOn: TemplateRole
+    Properties:
+      Code:
+        S3Bucket: higher-artifacts
+        S3Key: "autosecurelogin.zip"
+      Description: Updates NACL with security DENY rules from GuardDuty findings
+      Environment:
+        Variables:
+          BASERULE: "10"
+          MAXRULE: !Ref pNumberRules
+          NACLID: !Ref pNACL
+          DDBTABLE: !Join [ "-", [ "AutoSecureLoginTable", !Ref TemplateAmbiente ] ]
+      FunctionName: !Join [ "-", [ "AutoSecureLoginLambda", !Ref TemplateAmbiente ] ]
+      Role: !GetAtt TemplateRole.Arn
+      Timeout: 800
+      Handler: autosecurelogin.lambda_handler
+      Runtime: python3.8
+      MemorySize: 256
+      Tags:
+        -
+          Key: Env
+          Value: !Ref TemplateAmbiente
+
+  TemplateEventLambda:  #Event to invoke Lambda
+    Type: AWS::Events::Rule
+    DependsOn: TemplateLambda
+    Properties:
+      Description: Invoke Lambda for AutoSecureLogin adding deny rules to NACL
+      Name: !Join [ "-", [ "AutoSecureLoginEvent", !Ref TemplateAmbiente ] ]
+      EventPattern: { "source": [ "aws.guardduty" ], "detail-type": [ "GuardDuty Finding" ], "detail": { "type": [ "UnauthorizedAccess:EC2/SSHBruteForce", "UnauthorizedAccess:EC2/RDPBruteForce" ] } }
+      State: ENABLED
+      Targets:
+        -
+          Arn: !GetAtt TemplateLambda.Arn
+          Id: !Join [ "-", [!Ref TemplateAmbiente, "AutoSecureLoginLambda" ] ]
+
+  TemplatePermisoEventLambda: #Relaciona permisos del Event con Lambda
+    Type: AWS::Lambda::Permission
+    DependsOn: TemplateEventLambda
+    Properties:
+      FunctionName: !GetAtt TemplateLambda.Arn
+      Action: "lambda:InvokeFunction"
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt TemplateEventLambda.Arn
+
+Outputs: #Outputs of the Template
+  NACLtoUse:
+    Description: NACL Id to use
+    Value: !Ref pNACL
+  IPsToKeep:
+    Description: Max number of offendings IPs (CIDR/24) to create rules in NACL
+    Value: !Ref pNumberRules
+  DaysBlocked:
+    Description: Number of days to keep the DENY rule in place for an IP
+    Value: !Ref pDaysBlock
