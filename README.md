@@ -1,2 +1,2 @@
 # AutoSecureLogin
-Keep secure your Bastion Host from unauthorized login attempts automatically.
+Keep secure your Bastion Host in AWS from unauthorized login attempts automatically.
