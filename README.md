@@ -6,9 +6,9 @@ When GuardDuty alerts of RDPBruteForce or SSHBruteForce attacks it will automati
 
 The rules are added automatically in spaces of 5, so you can add custom rules to allow specific IPs in the CIDR is blocked.
 
-It also has a configurable duration of the block (in days) and a Max number of IPs to collect. REMEMBER to put your ALLOW rules in a higher number than MAX (number of IPs) x 5. Example: if MAX (number of IPs) is 50, AutoSecureLogin will use the rule numbers from 10 to 250, and you should start putting your ALLOW rules above that number.
+It also has a configurable duration of the block (in days) and a Max number of IPs to collect.
 
-> Version 0.1
+> Version 0.5
 
 ### Files:
 - autoSecureLogin-template.yml, CloudFormation template to Run in your account, it is already in a public S3 bucket
@@ -37,6 +37,8 @@ https://higher-artifacts.s3.amazonaws.com/autoSecureLogin-template.yml
 
 `If you edit the template remember to use LF end of lines.`
 
+`VPC NACL has a limit of 20 rules, thus the MAX number of IPs blocked is set at 15 as default.`
+
 #### Notes:
 
 - Function uses the CIDR /24 of the offending IPs 
@@ -46,6 +48,6 @@ https://higher-artifacts.s3.amazonaws.com/autoSecureLogin-template.yml
 ## To-Do
 - Updates more than one NACL with the rules
 
-- Creates two rules each time for SSH and RDP, right now only creates for the type of attack in the finding
+- If the MAX rules is reached, rotate the older with the newer even if is not expired
 
 - A better error management

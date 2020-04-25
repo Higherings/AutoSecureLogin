@@ -1,3 +1,9 @@
+# igarcia 2020-04
+# Version 0.5
+# Automation to Secure Bastion Host (Administration Instance Linux/Windows)
+# Gets updates from GuardDuty (must be already configured) and blocks the CIDR /24 of attackers
+# Main function to create entries in the NACL specified and updates de DynamoDB table
+
 import json
 import boto3
 import os
