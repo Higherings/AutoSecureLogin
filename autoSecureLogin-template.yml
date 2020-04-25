@@ -1,5 +1,5 @@
 # igarcia 2020-04
-# Version 0.1
+# Version 0.5
 # Automation to Secure Bastion Host (Administration Instance Linux/Windows)
 # Gets updates from GuardDuty (must be already configured) and blocks the CIDR /24 of attackers
 # This Template creates Lambda triggered by GuardDuty Findings and another Lambda scheduled for cleanup 
@@ -55,8 +55,8 @@ Parameters: #Default Parameters Values
     Description: "Max number of IPs to keep record, will use CIDR/24 of offending IPs"
     Default: 15
     MinValue: 1
-    MaxValue: 6400
-    ConstraintDescription: "Please set a number between 1 and 6400"
+    MaxValue: 15
+    ConstraintDescription: "Please set a number between 1 and 15, NACL VPC limit is 20"
   pNACL:
     Type: String
     Description: "ID of the Network Access Control List (NACL) protecting your Bastion Host Subnet"
@@ -150,7 +150,6 @@ Resources:
 
   TemplateLambdaCleaner:  #Lambda to Clean Up NACL
     Type: AWS::Lambda::Function
-    DependsOn: TemplateRole
     Properties:
       Code:
         S3Bucket: higher-artifacts
@@ -174,7 +173,6 @@ Resources:
 
   TemplateEventLambdaCleaner:  #Event to invoke Lambda Cleaner
     Type: AWS::Events::Rule
-    DependsOn: TemplateLambdaCleaner
     Properties:
       Description: Invoke Lambda for AutoSecureLogin Clean Up
       Name: !Join [ "-", [ "AutoSecureLogin-cleanerEvent", !Ref TemplateAmbiente ] ]
@@ -187,7 +185,6 @@ Resources:
 
   TemplatePermisoEventLambdaCleaner: #Relaciona permisos del Event con Lambda Cleaner
     Type: AWS::Lambda::Permission
-    DependsOn: TemplateEventLambdaCleaner
     Properties:
       FunctionName: !GetAtt TemplateLambdaCleaner.Arn
       Action: "lambda:InvokeFunction"
@@ -196,7 +193,6 @@ Resources:
 
   TemplateLambda:  #Lambda to Modify NACL
     Type: AWS::Lambda::Function
-    DependsOn: TemplateRole
     Properties:
       Code:
         S3Bucket: higher-artifacts
@@ -221,7 +217,6 @@ Resources:
 
   TemplateEventLambda:  #Event to invoke Lambda
     Type: AWS::Events::Rule
-    DependsOn: TemplateLambda
     Properties:
       Description: Invoke Lambda for AutoSecureLogin adding deny rules to NACL
       Name: !Join [ "-", [ "AutoSecureLoginEvent", !Ref TemplateAmbiente ] ]
@@ -234,7 +229,6 @@ Resources:
 
   TemplatePermisoEventLambda: #Relaciona permisos del Event con Lambda
     Type: AWS::Lambda::Permission
-    DependsOn: TemplateEventLambda
     Properties:
       FunctionName: !GetAtt TemplateLambda.Arn
       Action: "lambda:InvokeFunction"
