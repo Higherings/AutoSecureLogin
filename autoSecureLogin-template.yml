@@ -3,7 +3,7 @@
 # Automation to Secure Bastion Host (Administration Instance Linux/Windows)
 # Gets updates from GuardDuty (must be already configured) and blocks the CIDR /24 of attackers
 # This Template creates Lambda triggered by GuardDuty Findings and another Lambda scheduled for cleanup 
-# Resources to create: Lambda, CloudWatch Event, IAM Role, DynamoDB Table
+# Resources to create: Two Lambdas, Two CloudWatch Events, IAM Role, DynamoDB Table
 # The AWS Account should be already using GuardDuty
 # IMPORTANT: The block will occur on ports 3389 (Windows) or 22 (Linux) on the specified NACL
 
