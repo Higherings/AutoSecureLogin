@@ -1,5 +1,5 @@
 # igarcia 2020-04
-# Version 0.5
+# Version 0.9
 # Automation to Secure Bastion Host (Administration Instance Linux/Windows)
 # Gets updates from GuardDuty (must be already configured) and blocks the CIDR /24 of attackers
 # This Template creates Lambda triggered by GuardDuty Findings and another Lambda scheduled for cleanup 

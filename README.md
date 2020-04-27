@@ -26,7 +26,7 @@ If it's now working on your Region create an Issue and I will fix it.
 ## How To Deploy
 Use AWS CloudFormation to deploy the following template:
 
-https://higher-artifacts.s3.amazonaws.com/autoSecureLogin-template.yml
+https://higher-artifacts.s3.amazonaws.com/solutions/autoSecureLogin-template.yml
 
 ### Parameters:
 - *Env Tag*, use to identified the components of the template
