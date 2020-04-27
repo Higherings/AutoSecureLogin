@@ -8,7 +8,9 @@ The rules are added automatically in spaces of 5, so you can add custom rules to
 
 It also has a configurable duration of the block (in days) and a Max number of IPs to collect.
 
-> Version 0.5
+If it's now working on your Region create an Issue and I will fix it.
+
+> Version 0.9
 
 ### Files:
 - autoSecureLogin-template.yml, CloudFormation template to Run in your account, it is already in a public S3 bucket

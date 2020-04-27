@@ -152,8 +152,8 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        S3Bucket: higher-artifacts
-        S3Key: "autosecurelogin-cleaner.zip"
+        S3Bucket: !Join [ "-", [ "higher-artifacts", !Ref "AWS::Region" ] ]
+        S3Key: "solutions/autosecurelogin-cleaner.zip"
       Description: Clean up NACL rules after the block period
       Environment:
         Variables:
@@ -195,8 +195,8 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        S3Bucket: higher-artifacts
-        S3Key: "autosecurelogin.zip"
+        S3Bucket: !Join [ "-", [ "higher-artifacts", !Ref "AWS::Region" ] ]
+        S3Key: "solutions/autosecurelogin.zip"
       Description: Updates NACL with security DENY rules from GuardDuty findings
       Environment:
         Variables:
