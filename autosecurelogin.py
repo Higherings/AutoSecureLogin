@@ -1,5 +1,5 @@
 # igarcia 2020-04
-# Version 0.9
+# Version 1.0
 # Automation to Secure Bastion Host (Administration Instance Linux/Windows)
 # Gets updates from GuardDuty (must be already configured) and blocks the CIDR /24 of attackers
 # Main function to create entries in the NACL specified and updates de DynamoDB table
@@ -7,6 +7,7 @@
 import json
 import boto3
 import os
+from boto3.dynamodb.conditions import Key
 
 session = boto3.session.Session()
 dynamodb = session.resource('dynamodb')
@@ -28,6 +29,8 @@ def lambda_handler(event, context):
     e_type = event['detail']['type'].split('/')[1]
     cidr = '.'.join(e_ip.split('.')[0:3])+'.0/24'
     port = 0
+    cidr_del = ""
+    to_remove = False
     
     if e_type == 'RDPBruteForce': port = 3389
     if e_type == 'SSHBruteForce': port = 22
@@ -51,10 +54,30 @@ def lambda_handler(event, context):
     
     # Checks the limit of Rules to Create
     if nextrule_n >= BASE_RULE + MAX_RULE:
-        nextrule_n = BASE_RULE + MAX_RULE
-        new_nextrule = {nextrule_n}
-        print("MAX_RULE reached.")
-        return None
+        new_nextrule = {BASE_RULE + MAX_RULE}
+
+        # Will replace the oldest rule
+        rules = table.scan(
+            ProjectionExpression="pk, #rule, #date",
+            Select="SPECIFIC_ATTRIBUTES",
+            FilterExpression=Key("pk").begins_with("cidr#"),
+            ExpressionAttributeNames={"#rule": "rule","#date": "date"}
+        )
+        dates = []
+
+        for rule in rules['Items']:
+            dates.append(rule['date'])
+
+        dates.sort()    # Dates sorted from oldest to newest
+        rule = None
+
+        for rule in rules['Items']:
+            if rule['date'] == dates[0]:  # Found oldest rule
+                nextrule_n = int(rule['rule'])
+                cidr_del = rule['pk']
+                to_remove = True
+                break
+        print("MAX_RULE reached. Oldest rule replaced.")
     
     # Updates Rules in DynamoDB
     try:
@@ -68,6 +91,9 @@ def lambda_handler(event, context):
             },
             ConditionExpression = "attribute_not_exists(pk)"
         )
+        if to_remove:
+            response = nacl.delete_entry(Egress=False,RuleNumber=nextrule_n)
+            response = table.delete_item(Key={"pk":cidr_del})
     except Exception as e:
         # If Rule already Exist, Updates new date
         if e.response['Error']['Code'] == "ConditionalCheckFailedException":

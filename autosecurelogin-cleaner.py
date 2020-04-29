@@ -1,5 +1,5 @@
 # igarcia 2020-04
-# Version 0.9
+# Version 1.0
 # Automation to Secure Bastion Host (Administration Instance Linux/Windows)
 # Cleaner function to remove expired rules in NACL and updates DynamoDB table
 

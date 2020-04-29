@@ -10,7 +10,7 @@ It also has a configurable duration of the block (in days) and a Max number of I
 
 If it's now working on your Region create an Issue and I will fix it.
 
-> Version 0.9
+> Version 1.0
 
 ### Files:
 - autoSecureLogin-template.yml, CloudFormation template to Run in your account, it is already in a public S3 bucket
@@ -47,9 +47,7 @@ https://higher-artifacts.s3.amazonaws.com/solutions/autoSecureLogin-template.yml
 
 - Function is triggered with both SSH attacks and RDP attacks
 
+- If the MAX rules is reached, the older one will be replace even if is not expired
+
 ## To-Do
-- Updates more than one NACL with the rules
-
-- If the MAX rules is reached, rotate the older with the newer even if is not expired
-
 - A better error management
