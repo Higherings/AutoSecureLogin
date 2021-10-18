@@ -8,7 +8,7 @@ The rules are added automatically in spaces of 5, so you can add custom rules to
 
 It also has a configurable duration of the block (in days) and a Max number of IPs to collect.
 
-If it's now working on your Region create an Issue and I will fix it.
+If it's not working on your Region create an Issue and I will fix it.
 
 > Version 1.2.0
 
