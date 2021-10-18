@@ -10,7 +10,7 @@ It also has a configurable duration of the block (in days) and a Max number of I
 
 If it's not working on your Region create an Issue and I will fix it.
 
-> Version 1.2.0
+> Version 1.2.1
 
 ### Files:
 - autoSecureLogin-template.yml, CloudFormation template to Run in your account, it is already in a public S3 bucket

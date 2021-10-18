@@ -1,5 +1,5 @@
 # igarcia 2021-10
-# Version 1.2.0
+# Version 1.2.1
 # Automation to Secure Bastion Host (Administration Instance Linux/Windows)
 # Gets updates from GuardDuty (must be already configured) and blocks the IP of attackers
 # Main function to create entries in the NACL specified and updates de DynamoDB table
@@ -21,7 +21,7 @@ MAX_RULE = int(os.environ['MAXRULE'])*SPACE
 NACL_ID = os.environ['NACLID']
 
 def lambda_handler(event, context):
-    
+    print(event)
     # Gets DATA from event
     port = 0
     cidr_del = ""
@@ -34,12 +34,12 @@ def lambda_handler(event, context):
         if e_type == 'SSHBruteForce': port = 22
 
     if e_type in ['PortProbeUnprotectedPort']:
-        e_ip = event['detail']['service']['action']['portProbeAction']['portProbeDetails']['remoteIpDetails']['ipAddressV4']
-        e_country = event['detail']['service']['action']['portProbeAction']['portProbeDetails']['remoteIpDetails']['country']['countryName']
-        port = event['detail']['service']['action']['portProbeAction']['portProbeDetails']['localPortDetails']['port']
+        e_ip = event['detail']['service']['action']['portProbeAction']['portProbeDetails'][0]['remoteIpDetails']['ipAddressV4']
+        e_country = event['detail']['service']['action']['portProbeAction']['portProbeDetails'][0]['remoteIpDetails']['country']['countryName']
+        port = event['detail']['service']['action']['portProbeAction']['portProbeDetails'][0]['localPortDetails']['port']
 
     e_date = event['detail']['service']['eventLastSeen']
-    cidr = e_ip
+    cidr = e_ip + '/32'
 
     # Gets Next Rule Number(s)
     nextrule = table.get_item(Key={"pk":"nextrule"}) 
