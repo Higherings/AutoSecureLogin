@@ -1,11 +1,12 @@
-# igarcia 2020-04
-# Version 1.0
+# https://higher-artifacts.s3.amazonaws.com/solutions/autoSecureLogin-template.yml
+# igarcia 2021-10
+# Version 1.2.0
 # Automation to Secure Bastion Host (Administration Instance Linux/Windows)
-# Gets updates from GuardDuty (must be already configured) and blocks the CIDR /24 of attackers
-# This Template creates Lambda triggered by GuardDuty Findings and another Lambda scheduled for cleanup 
+# Gets updates from GuardDuty (must be already configured) and blocks the IP of attackers
+# This Template creates Lambda (arm) triggered by GuardDuty Findings and another Lambda scheduled for cleanup 
 # Resources to create: Two Lambdas, Two CloudWatch Events, IAM Role, DynamoDB Table
 # The AWS Account should be already using GuardDuty
-# IMPORTANT: The block will occur on ports 3389 (Windows) or 22 (Linux) on the specified NACL
+# IMPORTANT: The block will occur, for ALL traffic from the IP identified, in the specified NACL
 
 AWSTemplateFormatVersion: 2010-09-09
 Description: Template to automate security changes on NACL for Bastion Host
@@ -151,6 +152,8 @@ Resources:
   TemplateLambdaCleaner:  #Lambda to Clean Up NACL
     Type: AWS::Lambda::Function
     Properties:
+      Architectures: 
+        - arm64
       Code:
         S3Bucket: !Join [ "-", [ "higher-artifacts", !Ref "AWS::Region" ] ]
         S3Key: "solutions/autosecurelogin-cleaner.zip"
@@ -164,7 +167,7 @@ Resources:
       Role: !GetAtt TemplateRole.Arn
       Timeout: 800
       Handler: autosecurelogin-cleaner.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 256
       Tags:
         -
@@ -194,6 +197,8 @@ Resources:
   TemplateLambda:  #Lambda to Modify NACL
     Type: AWS::Lambda::Function
     Properties:
+      Architectures: 
+        - arm64
       Code:
         S3Bucket: !Join [ "-", [ "higher-artifacts", !Ref "AWS::Region" ] ]
         S3Key: "solutions/autosecurelogin.zip"
@@ -208,7 +213,7 @@ Resources:
       Role: !GetAtt TemplateRole.Arn
       Timeout: 800
       Handler: autosecurelogin.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       MemorySize: 256
       Tags:
         -
@@ -220,7 +225,7 @@ Resources:
     Properties:
       Description: Invoke Lambda for AutoSecureLogin adding deny rules to NACL
       Name: !Join [ "-", [ "AutoSecureLoginEvent", !Ref TemplateAmbiente ] ]
-      EventPattern: { "source": [ "aws.guardduty" ], "detail-type": [ "GuardDuty Finding" ], "detail": { "type": [ "UnauthorizedAccess:EC2/SSHBruteForce", "UnauthorizedAccess:EC2/RDPBruteForce" ] } }
+      EventPattern: { "source": [ "aws.guardduty" ], "detail-type": [ "GuardDuty Finding" ], "detail": { "type": [ "UnauthorizedAccess:EC2/SSHBruteForce", "UnauthorizedAccess:EC2/RDPBruteForce", "Recon:EC2/PortProbeUnprotectedPort" ] } }
       State: ENABLED
       Targets:
         -

@@ -2,15 +2,15 @@
 Easy to configure automation to automatically secure the Subnet where runs your Bastion Host by NACL DENY entries feeded by GuardDuty findings.
 It uses CloudFormation, Lambda, CloudWatch Events, DynamoDB and Amazon GuardDuty (should be already working on the account).
 
-When GuardDuty alerts of RDPBruteForce or SSHBruteForce attacks it will automatically block by a DENY rule in the NACL the offending IPs (whole CIDR /24).
+When GuardDuty alerts of RDPBruteForce, SSHBruteForce, PortProbeUnprotectedPort attacks it will automatically block by a DENY rule in the NACL the offending IP (ALL traffic).
 
-The rules are added automatically in spaces of 5, so you can add custom rules to allow specific IPs in the CIDR is blocked.
+The rules are added automatically in spaces of 5, so you can add custom rules to allow specific ports of the IP blocked.
 
 It also has a configurable duration of the block (in days) and a Max number of IPs to collect.
 
 If it's now working on your Region create an Issue and I will fix it.
 
-> Version 1.0
+> Version 1.2.0
 
 ### Files:
 - autoSecureLogin-template.yml, CloudFormation template to Run in your account, it is already in a public S3 bucket
@@ -43,9 +43,9 @@ https://higher-artifacts.s3.amazonaws.com/solutions/autoSecureLogin-template.yml
 
 #### Notes:
 
-- Function uses the CIDR /24 of the offending IPs 
+- Function uses the offending IPs and blocks ALL traffic from them 
 
-- Function is triggered with both SSH attacks and RDP attacks
+- Function is triggered with SSH attacks, RDP attacks and Port Probe attacks
 
 - If the MAX rules is reached, the older one will be replace even if is not expired
 
