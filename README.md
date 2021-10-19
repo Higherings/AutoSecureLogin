@@ -1,16 +1,16 @@
-# AutoSecureLogin
-Easy to configure automation to automatically secure the Subnet where runs your Bastion Host by NACL DENY entries feeded by GuardDuty findings.
-It uses CloudFormation, Lambda, CloudWatch Events, DynamoDB and Amazon GuardDuty (should be already working on the account).
+# AutoSecureLogin IS NOW AutoSecureNetwork
+Easy to configure automation to automatically secure the Subnets where run your Public Instances by NACL DENY entries feeded by GuardDuty findings.
+It uses CloudFormation, Lambda (Python - ARM), CloudWatch Events, DynamoDB and Amazon GuardDuty (should be already working on the account).
 
-When GuardDuty alerts of RDPBruteForce, SSHBruteForce, PortProbeUnprotectedPort attacks it will automatically block by a DENY rule in the NACL the offending IP (ALL traffic).
+When GuardDuty alerts of RDPBruteForce, SSHBruteForce, PortProbeUnprotectedPort attacks it will automatically block ALL traffic by a DENY rule in the NACL with the offending IPs (whole CIDR /24).
 
-The rules are added automatically in spaces of 5, so you can add custom rules to allow specific ports of the IP blocked.
+The rules are added automatically in spaces of 5, so you can add custom rules to allow specific IPs in the CIDR that is blocked.
 
 It also has a configurable duration of the block (in days) and a Max number of IPs to collect.
 
 If it's not working on your Region create an Issue and I will fix it.
 
-> Version 1.2.1
+> Version 2.0.0
 
 ### Files:
 - autoSecureLogin-template.yml, CloudFormation template to Run in your account, it is already in a public S3 bucket
@@ -43,7 +43,9 @@ https://higher-artifacts.s3.amazonaws.com/solutions/autoSecureLogin-template.yml
 
 #### Notes:
 
-- Function uses the offending IPs and blocks ALL traffic from them 
+- Function blocks ALL traffic  from offending IPs
+
+- Function uses the CIDR /24 of the offending IPs 
 
 - Function is triggered with SSH attacks, RDP attacks and Port Probe attacks
 

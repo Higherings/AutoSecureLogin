@@ -1,6 +1,7 @@
+# AutoSecureLogin IS NOW AutoSecureNetwork
 # igarcia 2021-10
-# Version 1.2.1
-# Automation to Secure Bastion Host (Administration Instance Linux/Windows)
+# Version 2.0.0
+# Automation to Secure Public Networks (or any public subnet in a VPC)
 # Cleaner function to remove expired rules in NACL and updates DynamoDB table
 
 import json

@@ -1,7 +1,8 @@
+# AutoSecureLogin IS NOW AutoSecureNetwork
 # igarcia 2021-10
-# Version 1.2.1
-# Automation to Secure Bastion Host (Administration Instance Linux/Windows)
-# Gets updates from GuardDuty (must be already configured) and blocks the IP of attackers
+# Version 2.0.0
+# Automation to Secure Public Networks (or any public subnet in a VPC)
+# Gets updates from GuardDuty (must be already configured) and blocks ALL traffic from the IP (CIDR/24) of attackers
 # Main function to create entries in the NACL specified and updates de DynamoDB table
 
 import json
@@ -39,7 +40,7 @@ def lambda_handler(event, context):
         port = event['detail']['service']['action']['portProbeAction']['portProbeDetails'][0]['localPortDetails']['port']
 
     e_date = event['detail']['service']['eventLastSeen']
-    cidr = e_ip + '/32'
+    cidr = '.'.join(e_ip.split('.')[0:3])+'.0/24'
 
     # Gets Next Rule Number(s)
     nextrule = table.get_item(Key={"pk":"nextrule"}) 

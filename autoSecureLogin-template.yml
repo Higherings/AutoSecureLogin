@@ -1,15 +1,16 @@
+# AutoSecureLogin IS NOW AutoSecureNetwork
 # https://higher-artifacts.s3.amazonaws.com/solutions/autoSecureLogin-template.yml
 # igarcia 2021-10
-# Version 1.2.0
-# Automation to Secure Bastion Host (Administration Instance Linux/Windows)
-# Gets updates from GuardDuty (must be already configured) and blocks the IP of attackers
+# Version 2.0.0
+# Automation to Secure Public Networks (or any public subnet in a VPC)
+# Gets updates from GuardDuty (must be already configured) and blocks ALL traffic from the IP (CIDR/24) of attackers
 # This Template creates Lambda (arm) triggered by GuardDuty Findings and another Lambda scheduled for cleanup 
-# Resources to create: Two Lambdas, Two CloudWatch Events, IAM Role, DynamoDB Table
+# Resources to create: Two Lambdas (Python - ARM), Two CloudWatch Events, IAM Role, DynamoDB Table
 # The AWS Account should be already using GuardDuty
-# IMPORTANT: The block will occur, for ALL traffic from the IP identified, in the specified NACL
+# IMPORTANT: The block will occur, for ALL traffic from the IP identified (CIDR/24), in the specified NACL
 
 AWSTemplateFormatVersion: 2010-09-09
-Description: Template to automate security changes on NACL for Bastion Host
+Description: Template to automate security changes on NACL for Public Subnets
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -21,7 +22,7 @@ Metadata:
           - TemplateAmbiente
       -
         Label:
-          default: "AutoSecureLogin Setup"
+          default: "AutoSecureNetwork Setup"
         Parameters:
           - pNACL
           - pNumberRules
@@ -79,7 +80,7 @@ Resources:
                 - "lambda.amazonaws.com"
             Action:
               - "sts:AssumeRole"
-      Description: Role to execute autoSecureLogin
+      Description: Role to execute AutoSecureNetwork
       Policies: 
         -
           PolicyName: !Join [ "-", [ "PolicyLambdaExec", !Ref TemplateAmbiente ] ]
@@ -125,8 +126,8 @@ Resources:
                   - "dynamodb:Query"
                   - "dynamodb:UpdateItem"
                   - "dynamodb:UpdateTable"
-                Resource: !Join [ "" , [ "arn:aws:dynamodb:*:*:table/", !Join [ "-", [ "AutoSecureLoginTable", !Ref TemplateAmbiente ] ] ] ]
-      RoleName: !Join [ "-", [ "RoleforAutoSecureLogin", !Ref TemplateAmbiente ] ]
+                Resource: !Join [ "" , [ "arn:aws:dynamodb:*:*:table/", !Join [ "-", [ "AutoSecureNetworkTable", !Ref TemplateAmbiente ] ] ] ]
+      RoleName: !Join [ "-", [ "RoleforAutoSecureNetwork", !Ref TemplateAmbiente ] ]
       Tags:
         - Key: Env
           Value: !Ref TemplateAmbiente
@@ -143,7 +144,7 @@ Resources:
         -
           AttributeName: pk
           KeyType: HASH
-      TableName: !Join [ "-", [ "AutoSecureLoginTable", !Ref TemplateAmbiente ] ]
+      TableName: !Join [ "-", [ "AutoSecureNetworkTable", !Ref TemplateAmbiente ] ]
       Tags:
         -
           Key: Env
@@ -162,8 +163,8 @@ Resources:
         Variables:
           BLOCKDAYS: !Ref pDaysBlock
           NACLID: !Ref pNACL
-          DDBTABLE: !Join [ "-", [ "AutoSecureLoginTable", !Ref TemplateAmbiente ] ]
-      FunctionName: !Join [ "-", [ "AutoSecureLoginLambda-cleaner", !Ref TemplateAmbiente ] ]
+          DDBTABLE: !Join [ "-", [ "AutoSecureNetworkTable", !Ref TemplateAmbiente ] ]
+      FunctionName: !Join [ "-", [ "AutoSecureNetworkLambda-cleaner", !Ref TemplateAmbiente ] ]
       Role: !GetAtt TemplateRole.Arn
       Timeout: 800
       Handler: autosecurelogin-cleaner.lambda_handler
@@ -177,14 +178,14 @@ Resources:
   TemplateEventLambdaCleaner:  #Event to invoke Lambda Cleaner
     Type: AWS::Events::Rule
     Properties:
-      Description: Invoke Lambda for AutoSecureLogin Clean Up
-      Name: !Join [ "-", [ "AutoSecureLogin-cleanerEvent", !Ref TemplateAmbiente ] ]
+      Description: Invoke Lambda for AutoSecureNetwork Clean Up
+      Name: !Join [ "-", [ "AutoSecureNetwork-cleanerEvent", !Ref TemplateAmbiente ] ]
       ScheduleExpression: "rate(1 day)"
       State: ENABLED
       Targets:
         -
           Arn: !GetAtt TemplateLambdaCleaner.Arn
-          Id: !Join [ "-", [!Ref TemplateAmbiente, "AutoSecureLoginLambda-cleaner" ] ]
+          Id: !Join [ "-", [!Ref TemplateAmbiente, "AutoSecureNetworkLambda-cleaner" ] ]
 
   TemplatePermisoEventLambdaCleaner: #Relaciona permisos del Event con Lambda Cleaner
     Type: AWS::Lambda::Permission
@@ -208,8 +209,8 @@ Resources:
           BASERULE: "10"
           MAXRULE: !Ref pNumberRules
           NACLID: !Ref pNACL
-          DDBTABLE: !Join [ "-", [ "AutoSecureLoginTable", !Ref TemplateAmbiente ] ]
-      FunctionName: !Join [ "-", [ "AutoSecureLoginLambda", !Ref TemplateAmbiente ] ]
+          DDBTABLE: !Join [ "-", [ "AutoSecureNetworkTable", !Ref TemplateAmbiente ] ]
+      FunctionName: !Join [ "-", [ "AutoSecureNetworkLambda", !Ref TemplateAmbiente ] ]
       Role: !GetAtt TemplateRole.Arn
       Timeout: 800
       Handler: autosecurelogin.lambda_handler
@@ -223,14 +224,14 @@ Resources:
   TemplateEventLambda:  #Event to invoke Lambda
     Type: AWS::Events::Rule
     Properties:
-      Description: Invoke Lambda for AutoSecureLogin adding deny rules to NACL
-      Name: !Join [ "-", [ "AutoSecureLoginEvent", !Ref TemplateAmbiente ] ]
+      Description: Invoke Lambda for AutoSecureNetwork adding deny rules to NACL
+      Name: !Join [ "-", [ "AutoSecureNetworkEvent", !Ref TemplateAmbiente ] ]
       EventPattern: { "source": [ "aws.guardduty" ], "detail-type": [ "GuardDuty Finding" ], "detail": { "type": [ "UnauthorizedAccess:EC2/SSHBruteForce", "UnauthorizedAccess:EC2/RDPBruteForce", "Recon:EC2/PortProbeUnprotectedPort" ] } }
       State: ENABLED
       Targets:
         -
           Arn: !GetAtt TemplateLambda.Arn
-          Id: !Join [ "-", [!Ref TemplateAmbiente, "AutoSecureLoginLambda" ] ]
+          Id: !Join [ "-", [!Ref TemplateAmbiente, "AutoSecureNetworkLambda" ] ]
 
   TemplatePermisoEventLambda: #Relaciona permisos del Event con Lambda
     Type: AWS::Lambda::Permission
