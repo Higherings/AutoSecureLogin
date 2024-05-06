@@ -1,7 +1,7 @@
 # AutoSecureLogin IS NOW AutoSecureNetwork
 # https://higher-artifacts.s3.amazonaws.com/solutions/autoSecureLogin-template.yml
-# igarcia 2021-10
-# Version 2.0.0
+# igarcia 2024-04
+# Version 2.1.0
 # Automation to Secure Public Networks (or any public subnet in a VPC)
 # Gets updates from GuardDuty (must be already configured) and blocks ALL traffic from the IP (CIDR/24) of attackers
 # This Template creates Lambda (arm) triggered by GuardDuty Findings and another Lambda scheduled for cleanup 
@@ -168,7 +168,7 @@ Resources:
       Role: !GetAtt TemplateRole.Arn
       Timeout: 800
       Handler: autosecurelogin-cleaner.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.12
       MemorySize: 256
       Tags:
         -
@@ -214,7 +214,7 @@ Resources:
       Role: !GetAtt TemplateRole.Arn
       Timeout: 800
       Handler: autosecurelogin.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.12
       MemorySize: 256
       Tags:
         -
